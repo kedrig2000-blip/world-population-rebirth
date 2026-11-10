@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세계 인구 분포 시뮬레이터 - 50개국 환생 게임</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        /* 3D Flip Card Effect */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl md:text-3xl">🌏</span>
+                <h1 class="text-xl md:text-2xl font-bold font-jua tracking-wide">세계 인구 분포 환생 시뮬레이터</h1>
+            </div>
+            <!-- TAB BUTTONS -->
+            <nav class="flex bg-blue-800/40 p-1 rounded-2xl backdrop-blur-md">
+                <button id="nav-reincarnate" onclick="switchTab('reincarnate')" 
+                    class="px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-sm md:text-base bg-white text-blue-700 shadow font-bold transition flex items-center gap-1.5 relative">
+                    🎲 <span>환생하기</span>
+                    <span id="reincarnate-mission-badge" class="hidden bg-rose-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold animate-pulse">🎁 보상</span>
+                </button>
+                <button id="nav-collection" onclick="switchTab('collection')" 
+                    class="px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-sm md:text-base hover:bg-blue-500/50 text-white transition flex items-center gap-1.5 relative">
+                    📖 <span>국가 도감</span>
+                    <span id="collected-badge" class="bg-yellow-400 text-slate-900 text-xs px-1.5 py-0.5 rounded-full font-bold">0/50</span>
+                    <span id="collection-mission-badge" class="hidden bg-rose-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold animate-pulse">🎁 보상</span>
+                </button>
+                <button id="nav-stats" onclick="switchTab('stats')" 
+                    class="px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-sm md:text-base hover:bg-blue-500/50 text-white transition flex items-center gap-1.5">
+                    📊 <span>통계 분석</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- STATS DASHBOARD BAR -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div class="text-xs text-slate-500 font-bold mb-1">총 환생 횟수</div>
+                <div id="stat-total-spins" class="text-xl md:text-2xl font-bold font-jua text-blue-600">0회</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div class="text-xs text-slate-500 font-bold mb-1">수집 완료 국가</div>
+                <div id="stat-collected-count" class="text-xl md:text-2xl font-bold font-jua text-emerald-600">0 / 50개국</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div class="text-xs text-slate-500 font-bold mb-1">확정 보장 찬스</div>
+                <div id="stat-pity-counter" class="text-xl md:text-2xl font-bold font-jua text-amber-500">5회 남음</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div class="text-xs text-slate-500 font-bold mb-1">⭐ 누적 정답 수</div>
+                <div id="stat-quiz-count" class="text-xl md:text-2xl font-bold font-jua text-purple-600">0개 (0회)</div>
+            </div>
+        </div>
+
+        <!-- 퀴즈 보상 팝업 알림 뱅너 (조건 달성 시) -->
+        <div id="quiz-reward-banner" class="hidden mb-6 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-900 p-4 rounded-2xl shadow-md flex items-center justify-between border-2 border-amber-300 animate-bounce">
+            <div class="flex items-center space-x-3">
+                <span class="text-3xl">🎁</span>
+                <div>
+                    <h3 class="font-jua text-lg">퀴즈 10개 정답 달성 보상!</h3>
+                    <p class="text-xs font-medium">정답 수 10개를 달성하여 미수집 희귀 국가 1개를 랜덤 해금할 수 있습니다!</p>
+                </div>
+            </div>
+            <button onclick="claimQuizRewardCountry()" class="bg-slate-900 text-yellow-300 font-jua px-4 py-2 rounded-xl hover:bg-slate-800 transition shadow">
+                지금 뽑기!
+            </button>
+        </div>
+
+        <!-- TAB 1: REINCARNATE (환생하기) -->
+        <section id="tab-reincarnate" class="space-y-6">
+            <div class="flex flex-col items-center justify-center py-4">
+
+                <!-- 3D FLIP CARD -->
+                <div class="w-72 h-[400px] md:w-80 md:h-[420px] perspective-1000 mb-6 cursor-pointer" onclick="triggerReincarnation()">
+                    <div id="card-inner" class="w-full h-full relative transform-style-3d transition-transform duration-700 shadow-2xl rounded-3xl">
+                        
+                        <!-- FRONT OF CARD (BEFORE FLIP) -->
+                        <div class="absolute inset-0 w-full h-full backface-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 rounded-3xl p-6 text-white flex flex-col justify-between border-4 border-indigo-400/50 shadow-inner z-20">
+                            <div class="flex justify-between items-center">
+                                <span class="bg-white/20 text-xs px-3 py-1 rounded-full backdrop-blur-md">NEXT LIFE</span>
+                                <span class="text-xl">🌟</span>
+                            </div>
+                            <div class="text-center my-auto space-y-3">
+                                <div class="text-6xl animate-pulse">🎲</div>
+                                <h2 class="text-2xl font-jua">다음 생에 나는<br>어느 나라에서 태어날까?</h2>
+                                <p class="text-xs text-blue-200">버튼이나 카드를 클릭하여 룰렛을 돌려보세요!</p>
+                            </div>
+                            <div class="text-center text-xs text-blue-300 bg-black/20 py-2 rounded-xl backdrop-blur-sm">
+                                실제 세계 인구 비율로 당첨 확률이 반영됩니다.
+                            </div>
+                        </div>
+
+                        <!-- BACK OF CARD (AFTER FLIP) -->
+                        <div id="card-back" class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 bg-white rounded-3xl p-6 flex flex-col justify-between border-4 border-slate-200 text-slate-800 shadow-2xl overflow-hidden z-10">
+                            <!-- Background Emoji Watermark -->
+                            <div id="card-bg-flag" class="absolute -right-6 -bottom-6 text-9xl opacity-10 pointer-events-none select-none">
+                                🇰🇷
+                            </div>
+
+                            <div class="flex justify-between items-center z-10">
+                                <span id="card-continent" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                                    아시아
+                                </span>
+                                <span id="card-pity-tag" class="hidden bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                                    ✨ 확정 찬스
+                                </span>
+                            </div>
+
+                            <div class="text-center my-auto z-10 space-y-1.5">
+                                <div id="card-flag" class="text-6xl transform hover:scale-110 transition duration-300">
+                                    🇰🇷
+                                </div>
+                                <h2 id="card-name" class="text-2xl font-jua text-slate-900">대한민국</h2>
+                                
+                                <!-- Key Stats Badge Grid inside Card -->
+                                <div class="grid grid-cols-3 gap-1 bg-slate-50 p-2 rounded-xl border border-slate-100 text-center text-[10px]">
+                                    <div>
+                                        <div class="text-slate-400 font-bold">👥 인구수</div>
+                                        <div id="card-pop-info" class="font-bold text-blue-600 font-jua">5,170만명</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-slate-400 font-bold">🌐 세계 비중</div>
+                                        <div id="card-share-info" class="font-bold text-emerald-600 font-jua">0.64%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-slate-400 font-bold">📐 인구 밀도</div>
+                                        <div id="card-density-info" class="font-bold text-amber-600 font-jua">515명/km²</div>
+                                    </div>
+                                </div>
+
+                                <!-- Random Job Highlight -->
+                                <div id="card-job-info" class="bg-indigo-50/80 border border-indigo-100 p-2 rounded-xl text-left text-xs space-y-0.5">
+                                    <div class="font-bold text-indigo-900 flex items-center gap-1">
+                                        <span>💼</span> <span id="card-job-title">반도체 연구원</span>
+                                    </div>
+                                    <p id="card-job-desc" class="text-[11px] text-slate-600 line-clamp-1">세계 첨단 IT 및 반도체 강국</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 z-10">
+                                <button id="card-quiz-btn" onclick="openCurrentCountryModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-jua py-2.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
+                                    <span>💡 상세 특징 및 탐구 퀴즈</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SPIN BUTTON -->
+                <button id="spin-btn" onclick="triggerReincarnation()" 
+                    class="w-72 md:w-80 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-white font-jua text-xl py-4 rounded-2xl shadow-xl transform active:scale-95 transition duration-200 border-b-4 border-amber-700 flex items-center justify-center gap-2">
+                    <span>✨ 룰렛 돌리기 (태어나기!)</span>
+                </button>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: COLLECTION (국가 도감 & 미션) -->
+        <section id="tab-collection" class="hidden space-y-8">
+            
+            <!-- MISSIONS SECTION (10 CONTINENT MISSIONS) -->
+            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">🏆</span>
+                        <h2 class="text-xl font-jua text-slate-900">대륙 탐험 미션 (10개)</h2>
+                    </div>
+                    <span class="text-xs text-slate-500">미션 달성 시 해당 대륙 미수집 희귀 국가 지급!</span>
+                </div>
+
+                <!-- 10 Mission Grid -->
+                <div id="mission-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <!-- Dynamic Mission Cards Injected Here -->
+                </div>
+            </div>
+
+            <!-- COLLECTION GRID & FILTERS -->
+            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h2 class="text-xl font-jua text-slate-900 flex items-center gap-2">
+                        <span>📖 50개국 수집 도감</span>
+                    </h2>
+                    
+                    <!-- FILTER BUTTONS -->
+                    <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+                        <button onclick="filterCollection('ALL')" class="col-filter-btn px-2.5 py-1 rounded-lg font-bold bg-slate-800 text-white" data-filter="ALL">전체</button>
+                        <button onclick="filterCollection('아시아')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="아시아">아시아</button>
+                        <button onclick="filterCollection('아프리카')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="아프리카">아프리카</button>
+                        <button onclick="filterCollection('유럽')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="유럽">유럽</button>
+                        <button onclick="filterCollection('북아메리카')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="북아메리카">북미</button>
+                        <button onclick="filterCollection('남아메리카')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="남아메리카">남미</button>
+                        <button onclick="filterCollection('오세아니아')" class="col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white" data-filter="오세아니아">오세아니아</button>
+                    </div>
+                </div>
+
+                <!-- COUNTRY CARDS GRID -->
+                <div id="collection-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <!-- Dynamic Collection Cards Injected Here -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- TAB 3: STATS (통계 분석) -->
+        <section id="tab-stats" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-xl font-jua text-slate-900">📊 대륙별 세계 인구 비율 분포 Chart</h2>
+                <div class="max-w-md mx-auto relative h-72">
+                    <canvas id="continentChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-100 border-t border-slate-200 text-center py-4 text-xs text-slate-500">
+        세계 인구 분포 시뮬레이터 &copy; 초등 사회 6학년 1학기 인구 교육용 자료
+    </footer>
+
+    <!-- MODAL: COUNTRY DETAIL & QUIZ -->
+    <div id="detail-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold">×</button>
+            
+            <div class="flex items-center space-x-3">
+                <span id="modal-flag" class="text-5xl">🇰🇷</span>
+                <div>
+                    <span id="modal-continent" class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">대륙</span>
+                    <h3 id="modal-name" class="text-2xl font-jua text-slate-900">국가명</h3>
+                </div>
+            </div>
+
+            <!-- KEY STATS CARDS -->
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-slate-50 p-2.5 rounded-2xl text-center border border-slate-100">
+                    <div class="text-[10px] text-slate-400 font-bold">인구수</div>
+                    <div id="modal-pop" class="text-xs md:text-sm font-bold font-jua text-blue-600">0명</div>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-2xl text-center border border-slate-100">
+                    <div class="text-[10px] text-slate-400 font-bold">세계 인구 비중</div>
+                    <div id="modal-share" class="text-xs md:text-sm font-bold font-jua text-emerald-600">0%</div>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-2xl text-center border border-slate-100">
+                    <div class="text-[10px] text-slate-400 font-bold">인구 밀도</div>
+                    <div id="modal-density" class="text-xs md:text-sm font-bold font-jua text-amber-600">0명/km²</div>
+                </div>
+            </div>
+
+            <!-- JOBS SECTION -->
+            <div class="space-y-2">
+                <h4 class="text-sm font-bold font-jua text-slate-800 flex items-center gap-1">
+                    <span>👨‍🌾</span> <span>대표 직업 및 특징</span>
+                </h4>
+                <div id="modal-jobs" class="grid grid-cols-1 gap-2 text-xs">
+                    <!-- Dynamic Jobs injected here -->
+                </div>
+            </div>
+
+            <!-- QUIZ SECTION -->
+            <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 space-y-3">
+                <h4 class="text-sm font-bold font-jua text-indigo-900 flex items-center gap-1">
+                    <span>❓</span> <span>탐구 퀴즈</span>
+                </h4>
+                <p id="modal-quiz-q" class="text-xs font-medium text-slate-700 leading-relaxed">
+                    퀴즈 질문이 들어갑니다.
+                </p>
+                
+                <div id="modal-quiz-opts" class="grid grid-cols-1 gap-2">
+                    <!-- Dynamic Options Injected Here -->
+                </div>
+
+                <div id="quiz-feedback" class="hidden text-xs text-center font-bold p-2 rounded-xl"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALL 50 COUNTRIES COMPLETE VICTORY -->
+    <div id="victory-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-amber-400 to-amber-600 rounded-3xl max-w-md w-full p-8 text-center text-white space-y-4 shadow-2xl relative border-4 border-amber-300">
+            <div class="text-7xl animate-bounce">🏆</div>
+            <h2 class="text-3xl font-jua text-slate-900">축하합니다!</h2>
+            <p class="text-lg font-jua">세계 50개국 도감을 완판하셨습니다!</p>
+            <p class="text-xs text-amber-100 leading-relaxed">
+                당신은 전 세계의 인구 분포, 대륙별 인구 밀도, 직업적 특성을 완벽히 탐구한 <br>
+                <strong class="text-slate-900 text-sm font-bold">✨ '세계 인구 탐험 마스터' ✨</strong>입니다!
+            </p>
+            <button onclick="closeVictoryModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-300 font-jua py-3 rounded-2xl transition shadow-xl">
+                도감 확인하기
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // -------------------------------------------------------------
+        // 1. DATA: 50 REPRESENTATIVE COUNTRIES DATA
+        // -------------------------------------------------------------
+        const TOTAL_WORLD_POP = 8000000000; // 약 80억 명
+
+        const countriesData = [
+            // 아시아 (18개국)
+            { id: 'IND', name: '인도', continent: '아시아', flag: '🇮🇳', pop: 1428000000, density: 435, capital: '뉴델리', jobs: [{ title: 'IT 소프트웨어 개발자', desc: '세계 IT 산업의 중추' }, { title: '농업 종사자', desc: '전체 인구의 절반 이상이 농업 종사' }], quiz: { q: '인도가 중국을 제치고 세계 인구 1위에 오를 수 있었던 주요 원인은 무엇일까요?', opts: ['이민자가 많아서', '젊은 층 인구 비중이 높아서', '국토가 가장 넓어서', '산업화가 늦어져서'], a: 1 } },
+            { id: 'CHN', name: '중국', continent: '아시아', flag: '🇨🇳', pop: 1411000000, density: 150, capital: '베이징', jobs: [{ title: '제조업 엔지니어', desc: '세계의 공장 역할' }, { title: '전자상거래 전문가', desc: '디지털 결제 시장 급성장' }], quiz: { q: '중국의 인구 분포 특성으로 옳은 것은?', opts: ['서부 사막 지대에 인구가 집중됨', '전 국토에 균등하게 분포함', '동부 해안 지역에 인구가 집중됨', '북극 근처에 집중됨'], a: 2 } },
+            { id: 'IDN', name: '인도네시아', continent: '아시아', flag: '🇮🇩', pop: 277000000, density: 145, capital: '자카르타', jobs: [{ title: '자원 채굴 엔지니어', desc: '니켈 등 풍부한 광물 자원' }, { title: '해양 어업 전문가', desc: '수많은 섬으로 구성된 군도 국가' }], quiz: { q: '인도네시아의 인구 약 50% 이상이 모여 사는 대표적인 섬은?', opts: ['발리섬', '자바섬', '그린란드', '제주도'], a: 1 } },
+            { id: 'PAK', name: '파키스탄', continent: '아시아', flag: '🇵🇰', pop: 240000000, density: 300, capital: '이스라마바드', jobs: [{ title: '섬유 공학자', desc: '면화 생산 및 의류 산업 발전' }, { title: '관개 농업 전문가', desc: '인더스강 유역 농업' }], quiz: { q: '파키스탄 인구가 집중된 인더스강 유역의 지형적 특성은?', opts: ['험준한 고산 지대', '비옥한 평야 지대', '건조한 사막 지대', '빙하 지대'], a: 1 } },
+            { id: 'BGD', name: '방글라데시', continent: '아시아', flag: '🇧🇩', pop: 173000000, density: 1265, capital: '다카', jobs: [{ title: '의류 봉제 기술자', desc: '세계 2위의 의류 수출국' }, { title: '벼농사 전문가', desc: '삼각주 지역의 풍부한 용수' }], quiz: { q: '방글라데시의 인구 밀도 특성으로 가장 적절한 설명은?', opts: ['세계에서 인구 밀도가 가장 낮음', '도시 및 국토 전체의 인구 밀도가 매우 높음', '사막이 많아 사람이 살지 않음', '고원 지대라 인구가 적음'], a: 1 } },
+            { id: 'JPN', name: '일본', continent: '아시아', flag: '🇯🇵', pop: 124000000, density: 330, capital: '도쿄', jobs: [{ title: '정밀 기계 기술자', desc: '첨단 기술 및 자동차 산업' }, { title: '실버 케어 전문가', desc: '초고령화 사회 진입' }], quiz: { q: '일본이 현재 겪고 있는 가장 심각한 인구 문제는?', opts: ['급격한 인구 폭발', '농촌 인구 과다', '초고령화 및 저출생', '높은 출생률'], a: 2 } },
+            { id: 'PHL', name: '필리핀', continent: '아시아', flag: '🇵🇭', pop: 117000000, density: 390, capital: '마닐라', jobs: [{ title: '글로벌 콜센터 상담원', desc: '높은 영어 소통 능력' }, { title: '해외 파견 간호사', desc: '세계 각국으로 인력 진출' }], quiz: { q: '필리핀의 인구 구조적 장점은 무엇일까요?', opts: ['고령 인구가 대부분임', '젊은 노동력 비율이 높음', '인구가 지속적으로 감소함', '도시 인구가 전혀 없음'], a: 1 } },
+            { id: 'VNM', name: '베트남', continent: '아시아', flag: '🇻🇳', pop: 98000000, density: 310, capital: '하노이', jobs: [{ title: '전자제품 조립 엔지니어', desc: '글로벌 생산 기지로 부상' }, { title: '커피 재배 농가', desc: '세계 2위의 커피 생산국' }], quiz: { q: '베트남의 인구가 주로 집중된 두 개의 거대한 삼각주 지역은?', opts: ['아마존강 삼각주', '홍강 & 메콩강 삼각주', '나일강 삼각주', '라인강 삼각주'], a: 1 } },
+            { id: 'IRN', name: '이란', continent: '아시아', flag: '🇮🇷', pop: 89000000, density: 54, capital: '테헤란', jobs: [{ title: '석유 화학 엔지니어', desc: '풍부한 매장량의 석유 산업' }, { title: '카펫 공예가', desc: '전통 페르시아 카펫 제작' }], quiz: { q: '이란의 인구 분포에 가장 큰 영향을 미치는 자연환경은?', opts: ['열대 우림', '중앙부의 건조 사막과 산맥', '빙하 지대', '해수면 상승'], a: 1 } },
+            { id: 'TUR', name: '튀르키예', continent: '아시아', flag: '🇹🇷', pop: 85000000, density: 110, capital: '앙카라', jobs: [{ title: '무역 및 물류 전문가', desc: '아시아와 유럽의 연결 거점' }, { title: '관광 가이드', desc: '풍부한 역사 문화 유적' }], quiz: { q: '튀르키예의 지리적·인구적 가장 큰 특징은?', opts: ['섬나라인 군도 국가임', '북극에 인접해 있음', '아시아와 유럽 두 대륙에 걸쳐 있음', '남반구에 위치함'], a: 2 } },
+            { id: 'THA', name: '태국', continent: '아시아', flag: '🇹🇭', pop: 71000000, density: 140, capital: '방콕', jobs: [{ title: '관광 서비스 전문가', desc: '세계적인 관광 대국' }, { title: '쌀 농업 연구원', desc: '세계 주요 쌀 수출국' }], quiz: { q: '태국의 수도이자 인구가 가장 밀집된 도시 경제 중심지는?', opts: ['푸켓', '방콕', '치앙마이', '파타야'], a: 1 } },
+            { id: 'KOR', name: '대한민국', continent: '아시아', flag: '🇰🇷', pop: 51700000, density: 515, capital: '서울', jobs: [{ title: '반도체 연구원', desc: '세계 첨단 IT 및 반도체 강국' }, { title: 'K-콘텐츠 크리에이터', desc: '글로벌 문화 산업 주도' }], quiz: { q: '대한민국의 인구 분포 현상 중 가장 두드러지는 특징은?', opts: ['지방 농촌 인구 급증', '전 국토의 균등한 인구 분산', '수도권(서울·경기·인천) 인구 집중', '고원 지대 인구 집중'], a: 2 } },
+            { id: 'IRQ', name: '이라크', continent: '아시아', flag: '🇮🇶', pop: 45000000, density: 100, capital: '바그다드', jobs: [{ title: '석유 정제 기술자', desc: '풍부한 원유 매장량' }, { title: '대추야자 농가', desc: '메소포타미아 비옥한 지대' }], quiz: { q: '이라크 인구가 주로 서식하고 문명이 발달한 두 강은?', opts: ['나일강 & 콩고강', '티그리스강 & 유프라테스강', '황허강 & 양쯔강', '미시시피강 & 미주리강'], a: 1 } },
+            { id: 'SAU', name: '사우디아라비아', continent: '아시아', flag: '🇸🇦', pop: 36000000, density: 16, capital: '리야드', jobs: [{ title: '에너지 엔지니어', desc: '세계 최대 원유 수출국 중 하나' }, { title: '담수화 플랜트 기술자', desc: '해수 담수화 기술 발전' }], quiz: { q: '사우디아라비아의 인구 밀도가 국토 크기에 비해 낮은 주요 이유는?', opts: ['열대 우림으로 덮여 있어서', '빙하가 국토를 덮고 있어서', '국토 대부분이 건조 사막 지대여서', '섬이 너무 많아서'], a: 2 } },
+            { id: 'UZB', name: '우즈베키스탄', continent: '아시아', flag: '🇺🇿', pop: 36000000, density: 80, capital: '타슈켄트', jobs: [{ title: '목화 재배 농가', desc: '실크로드 중심지' }, { title: '천연가스 기술자', desc: '풍부한 지하 자원' }], quiz: { q: '우즈베키스탄의 역사적·지리적 인구 거점으로서의 특징은?', opts: ['해양 무역 중심 섬나라', '고대 실크로드의 오아시스 도시 발달', '남극 대륙 인접', '아마존 밀림 지역'], a: 1 } },
+            { id: 'MYS', name: '말레이시아', continent: '아시아', flag: '🇲🇾', pop: 34000000, density: 100, capital: '쿠알라룸푸르', jobs: [{ title: '팜유 플랜테이션 관리자', desc: '세계적 팜유 생산국' }, { title: '반도체 패키징 엔지니어', desc: '동남아 IT 제조 허브' }], quiz: { q: '말레이시아의 지리적 구조는 어떻게 이루어져 있나요?', opts: ['단 하나의 거대한 섬', '서말레이시아(반도)와 동말레이시아(보르네오섬)', '수천 개의 사막 오아시스', '유럽 대륙 내부'], a: 1 } },
+            { id: 'NPL', name: '네팔', continent: '아시아', flag: '🇳🇵', pop: 30000000, density: 200, capital: '카트만두', jobs: [{ title: '히말라야 등반 가이드(셰르파)', desc: '세계 최고봉 산악 관광' }, { title: '계단식 논 농가', desc: '산악 지형 농업' }], quiz: { q: '네팔의 인구 분포에 가장 절대적인 영향을 주는 지형은?', opts: ['사하라 사막', '아마존 평원', '히말라야 산맥', '태평양 해자'], a: 2 } },
+            { id: 'MNG', name: '몽골', continent: '아시아', flag: '🇲🇳', pop: 3400000, density: 2, capital: '울란바토르', jobs: [{ title: '유목 축산인', desc: '전통적인 말·양 사육' }, { title: '광산 개발 기술자', desc: '구리 및 석탄 매장량 풍부' }], quiz: { q: '몽골이 세계에서 인구 밀도가 가장 낮은 국가 중 하나인 이유는?', opts: ['섬나라여서', '인구가 모두 이민을 가서', '넓은 초원과 건조 기후 환경', '국토 전체가 화산이어서'], a: 2 } },
+
+            // 아프리카 (14개국)
+            { id: 'NGA', name: '나이지리아', continent: '아프리카', flag: '🇳🇬', pop: 224000000, density: 240, capital: '아부자', jobs: [{ title: '석유 화학 엔지니어', desc: '아프리카 최대 산유국' }, { title: '영화 프로듀서(놀리우드)', desc: '아프리카 최대 영화 산업' }], quiz: { q: '나이지리아의 인구적 세계적 위치는?', opts: ['아프리카에서 인구가 가장 적은 국가', '아프리카 대륙에서 인구가 가장 많은 국가', '유럽의 섬나라', '인구가 감소하는 국가'], a: 1 } },
+            { id: 'ETH', name: '에티오피아', continent: '아프리카', flag: '🇪🇹', pop: 126000000, density: 115, capital: '아디스아바바', jobs: [{ title: '커피 재배 농가', desc: '아라비카 커피의 고향' }, { title: '국제기구 외교관', desc: '아프리카연합(AU) 본부 소재지' }], quiz: { q: '에티오피아의 수도 아디스아바바는 지형적으로 어떤 곳에 위치해 인구가 밀집했나요?', opts: ['해수면보다 낮은 사막', '열대 습지', '시원하고 쾌적한 고원 지대', '해안가 포구'], a: 2 } },
+            { id: 'EGY', name: '이집트', continent: '아프리카', flag: '🇪🇬', pop: 112000000, density: 110, capital: '카이로', jobs: [{ title: '수에즈 운하 운항 관리사', desc: '세계 물류 핵심 통로' }, { title: '고대 문학 관광 가이드', desc: '피라미드 및 스핑크스' }], quiz: { q: '이집트 인구의 95% 이상이 집중되어 살아가는 구역은?', opts: ['서부 사막 중심부', '나일강 유역 삼각주 지대', '시나이반도 고산 지대', '홍해 바다속'], a: 1 } },
+            { id: 'COD', name: '콩고민주공화국', continent: '아프리카', flag: '🇨🇩', pop: 102000000, density: 44, capital: '킨샤사', jobs: [{ title: '핵심 광물 채굴 기사', desc: '코발트 및 구리 매장량 1위' }, { title: '열대림 보호 활동가', desc: '세계 2위의 콩고 열대우림' }], quiz: { q: '콩고민주공화국의 인구 분포 및 자연환경의 특징은?', opts: ['빙하 지대', '지중해성 기후', '콩고강 유역과 분지 열대우림', '초대형 사막'], a: 2 } },
+            { id: 'TZN', name: '탄자니아', continent: '아프리카', flag: '🇹🇿', pop: 67000000, density: 70, capital: '도도마', jobs: [{ title: '사파리 투어 가이드', desc: '킬리만자로 및 세렌게티' }, { title: '캐슈넛 재배 농가', desc: '농업 기반 경제' }], quiz: { q: '탄자니아에 위치한 아프리카 대륙 최고봉 산의 이름은?', opts: ['에베레스트산', '백두산', '킬리만자로산', '알프스산'], a: 2 } },
+            { id: 'ZAF', name: '남아프리카공화국', continent: '아프리카', flag: '🇿🇦', pop: 60000000, density: 49, capital: '프리토리아', jobs: [{ title: '금·다이아몬드 광산 엔지니어', desc: '풍부한 광물 자원' }, { title: '와인 와이너리 매니저', desc: '지중해성 기후 와인 산업' }], quiz: { q: '남아프리카공화국의 지리적 위치 특징은?', opts: ['아프리카 최북단 지중해 연안', '아프리카 대륙 최남단에 위치', '아시아 대륙 중심부', '태평양 한가운데'], a: 1 } },
+            { id: 'KEN', name: '케냐', continent: '아프리카', flag: '🇰🇪', pop: 55000000, density: 95, capital: '나이로비', jobs: [{ title: '원예 차(Tea) 재배 농가', desc: '세계적인 홍차 수출국' }, { title: '모바일 금융 개발자', desc: '모바일 결제(M-Pesa) 선도국' }], quiz: { q: '케냐의 대표적인 육상 및 관광 자원으로 올바른 것은?', opts: ['북극곰 서식지', '세렌게티 및 마사이마라 야생동물 보호구역', '빙하 스키장', '대형 석유 매장지'], a: 1 } },
+            { id: 'UGA', name: '우간다', continent: '아프리카', flag: '🇺🇬', pop: 48000000, density: 240, capital: '캄팔라', jobs: [{ title: '유기농 커피 농가', desc: '아프리카 대표 커피 생산' }, { title: '생태 관광 가이드', desc: '빅토리아호와 고릴라 서식지' }], quiz: { q: '우간다의 인구 분포에 영향을 준 아프리카 최대의 호수는?', opts: ['바이칼호', '슈피리어호', '빅토리아호', '사해'], a: 2 } },
+            { id: 'DZA', name: '알제리', continent: '아프리카', flag: '🇩🇿', pop: 45000000, density: 19, capital: '알제', jobs: [{ title: '천연가스 파이프라인 엔지니어', desc: '유럽 가스 공급국' }, { title: '올리브 농가', desc: '지중해 연안 농업' }], quiz: { q: '알제리 국토의 대부분을 차지하여 인구가 살기 힘든 자연환경은?', opts: ['아마존 밀림', '사하라 사막', '시베리아 툰드라', '알프스 고산'], a: 1 } },
+            { id: 'SDN', name: '수단', continent: '아프리카', flag: '🇸🇩', pop: 48000000, density: 25, capital: '카르툼', jobs: [{ title: '목축업 종사자', desc: '소와 양 사육' }, { title: '아라비아고무 채취 농가', desc: '세계 최대 생산국' }], quiz: { q: '수단의 수도 카르툼에서 만나는 두 개의 나일강 줄기는?', opts: ['아마존강 & 미시시피강', '백나일강 & 청나일강', '한강 & 낙동강', '라인강 & 다뉴브강'], a: 1 } },
+            { id: 'MAR', name: '모로코', continent: '아프리카', flag: '🇲🇦', pop: 37000000, density: 83, capital: '라바트', jobs: [{ title: '인광석 광산 엔지니어', desc: '세계 최대 인광석 매장국' }, { title: '영화 촬영 코디네이터', desc: '세계적 영화 촬영지' }], quiz: { q: '모로코가 유럽 대륙과 가장 가까이 만나는 해협의 이름은?', opts: ['말라카 해협', '베링 해협', '지브롤터 해협', '호르무즈 해협'], a: 2 } },
+            { id: 'GHA', name: '가나', continent: '아프리카', flag: '🇬🇭', pop: 34000000, density: 145, capital: '아크라', jobs: [{ title: '카카오 재배 농가', desc: '세계 2위의 초콜릿 원료 생산국' }, { title: '금광 채굴 엔지니어', desc: '골드코스트 역사' }], quiz: { q: '가나의 대표적인 수출 농산물로 초콜릿의 원료가 되는 작물은?', opts: ['밀', '카카오', '옥수수', '커피'], a: 1 } },
+            { id: 'CMR', name: '카메룬', continent: '아프리카', flag: '🇨🇲', pop: 28000000, density: 60, capital: '야운데', jobs: [{ title: '목재 임업 전문가', desc: '풍부한 산림 자원' }, { title: '열대 과일 농가', desc: '바나나 및 코코아 생산' }], quiz: { q: '카메룬이 "미니 아프리카"로 불리는 지리적 이유는?', opts: ['땅이 아프리카에서 가장 작아서', '사막, 열대우림, 고원이 모두 존재해서', '섬나라여서', '인구가 가장 적어서'], a: 1 } },
+            { id: 'MOZ', name: '모잠비크', continent: '아프리카', flag: '🇲🇿', pop: 33000000, density: 40, capital: '마푸투', jobs: [{ title: '해양 항만 물류원', desc: '긴 인도양 해안선 무역' }, { title: '천연가스 개발 기사', desc: '해양 가스전 발굴' }], quiz: { q: '모잠비크가 접하고 있는 세계 3대 양 중 하나는?', opts: ['태평양', '대서양', '인도양', '북극해'], a: 2 } },
+
+            // 유럽 (10개국)
+            { id: 'RUS', name: '러시아', continent: '유럽', flag: '🇷🇺', pop: 144000000, density: 9, capital: '모스크바', jobs: [{ title: '천연가스 파이프라인 기사', desc: '세계 최대 국토 및 에너지 자원' }, { title: '우주 항공 공학자', desc: '우주 산업 기술강국' }], quiz: { q: '러시아의 인구 분포적 특징으로 옳은 설명은?', opts: ['시베리아 동쪽 끝에 집중됨', '우랄산맥 서쪽 유럽 지역에 인구가 75% 이상 집중됨', '사막 한가운데 집중됨', '전 영토에 아주 균등함'], a: 1 } },
+            { id: 'DEU', name: '독일', continent: '유럽', flag: '🇩🇪', pop: 84000000, density: 235, capital: '베를린', jobs: [{ title: '자동차 공학 엔지니어', desc: '세계적인 마이스터 제조 강국' }, { title: '신재생에너지 연구원', desc: '친환경 친화적 정책' }], quiz: { q: '독일이 유럽연합(EU) 내에서 가지는 인구적 위상은?', opts: ['EU에서 인구가 가장 적은 국가', 'EU 회원국 중 인구가 가장 많은 국가', '비유럽 국가', '섬나라'], a: 1 } },
+            { id: 'GBR', name: '영국', continent: '유럽', flag: '🇬🇧', pop: 67000000, density: 275, capital: '런던', jobs: [{ title: '글로벌 금융 펀드매니저', desc: '세계 금융의 중심지 런던' }, { title: '문화 예술 기획자', desc: '뮤지컬 및 프리미어리그' }], quiz: { q: '영국의 섬 지형을 이루는 두 큰 섬 중 하나는?', opts: ['그린란드', '그레이트브리튼섬', '마다가스카르', '시칠리아섬'], a: 1 } },
+            { id: 'FRA', name: '프랑스', continent: '유럽', flag: '🇫🇷', pop: 65000000, density: 120, capital: '파리', jobs: [{ title: '패션 디자이너 & 조향사', desc: '세계 명품 및 향수 산업' }, { title: '대규모 밀 농가', desc: 'EU 최대 농업 생산국' }], quiz: { q: '프랑스의 국토 지형이 주는 농업적 장점은?', opts: ['사막이 대부분임', '고산 빙하로만 구성됨', '평야가 넓고 기후가 완만함', '화산재로 덮여있음'], a: 2 } },
+            { id: 'ITA', name: '이탈리아', continent: '유럽', flag: '🇮🇹', pop: 59000000, density: 195, capital: '로마', jobs: [{ title: '수제 가죽 장인', desc: '전통 패션 명품 산업' }, { title: '문화재 복원 전문가', desc: '세계 유산 보유국' }], quiz: { q: '이탈리아의 지도상 영토 모양의 특이한 형태는?', opts: ['완벽한 정사각형', '장화 모양의 반도', '부채꼴 모양', '동그라미 모양'], a: 1 } },
+            { id: 'ESP', name: '스페인', continent: '유럽', flag: '🇪🇸', pop: 48000000, density: 94, capital: '마드리드', jobs: [{ title: '태양광 발전 전문가', desc: '풍부한 일조량 활용' }, { title: '올리브유 생산 농가', desc: '세계 1위 올리브 생산국' }], quiz: { q: '스페인이 위치한 유럽 남서부의 대표 반도 이름은?', opts: ['발칸반도', '이베리아반도', '스칸디나비아반도', '한반도'], a: 1 } },
+            { id: 'POL', name: '폴란드', continent: '유럽', flag: '🇵🇱', pop: 40000000, density: 130, capital: '바르샤바', jobs: [{ title: 'IT 소프트웨어 개발자', desc: '유럽 IT 개발 허브' }, { title: '가전제품 제조업 기술자', desc: '중유럽 물류 제조업 거점' }], quiz: { q: '폴란드의 지형 이름(Poland)의 원뜻에서 알 수 있는 지형적 특징은?', opts: ['산맥의 나라', '평원의 나라', '섬들의 나라', '사막의 나라'], a: 1 } },
+            { id: 'UKR', name: '우크라이나', continent: '유럽', flag: '🇺🇦', pop: 38000000, density: 63, capital: '키이우', jobs: [{ title: '곡물 대규모 농가', desc: '세계의 빵 바구니(비옥한 흑토)' }, { title: '제철 금속 공학자', desc: '풍부한 철광석 산업' }], quiz: { q: '우크라이나가 세계적인 곡물 생산지인 주요 자연적 조건은?', opts: ['열대 우림 기후', '빙하 지대', '비옥한 세계 3대 흑토 지대', '사막 토양'], a: 2 } },
+            { id: 'CHE', name: '스위스', continent: '유럽', flag: '🇨🇭', pop: 8800000, density: 215, capital: '베른', jobs: [{ title: '정밀 시계 제작 장인', desc: '세계 최고 시계 공학' }, { title: '국제 금융 자산관리사', desc: '안정적인 금융 시스템' }], quiz: { q: '스위스 국토의 대부분을 차지하는 아름다운 고산 산맥은?', opts: ['안데스산맥', '알프스산맥', '로키산맥', '우랄산맥'], a: 1 } },
+            { id: 'NOR', name: '노르웨이', continent: '유럽', flag: '🇳🇴', pop: 5500000, density: 15, capital: '오슬로', jobs: [{ title: '연어 양식 전문가', desc: '세계 최대 연어 수출국' }, { title: '해양 석유 플랜트 기사', desc: '북해 유전 개발' }], quiz: { q: '노르웨이 해안선에서 볼 수 있는 빙하가 깎아 만든 복잡한 절벽 골짜기 해안은?', opts: ['리아스 해안', '피오르 해안', '석호', '사구'], a: 1 } },
+
+            // 북아메리카 (4개국)
+            { id: 'USA', name: '미국', continent: '북아메리카', flag: '🇺🇸', pop: 335000000, density: 37, capital: '워싱턴 D.C.', jobs: [{ title: '빅테크 AI 연구원', desc: '실리콘밸리 글로벌 기술 혁신' }, { title: '할리우드 영화 감독', desc: '세계 엔터테인먼트 중심' }], quiz: { q: '미국의 인구 분포 특성 중 인구가 가장 밀집된 두 해안 지대는?', opts: ['북극해 연안', '중부 사막 지대', '동부 대서양 연안 & 서부 태평양 연안', '알래스카 한가운데'], a: 2 } },
+            { id: 'MEX', name: '멕시코', continent: '북아메리카', flag: '🇲🇽', pop: 128000000, density: 65, capital: '멕시코시티', jobs: [{ title: '자동차 조립 기술자', desc: '북미 제조업 생태계 거점' }, { title: '아보카도 농가', desc: '세계 최대 아보카도 생산' }], quiz: { q: '멕시코의 수도 멕시코시티의 지형적 위치 특성은?', opts: ['해수면 사막', '해발 2,200m 이상의 고원 지대', '북극 빙하', '태평양 섬'], a: 1 } },
+            { id: 'CAN', name: '캐나다', continent: '북아메리카', flag: '🇨🇦', pop: 38500000, density: 4, capital: '오타와', jobs: [{ title: '자원 및 산림 관리자', desc: '넓은 국토와 목재·자원' }, { title: 'AI 데이터 과학자', desc: '토론토·몬트리올 기술 허브' }], quiz: { q: '캐나다 인구의 90% 이상이 집중되어 사는 구역은?', opts: ['북극해 주변', '미국과의 국경선 근처 따뜻한 남부 지역', '허드슨만 한가운데', '서부 사막'], a: 1 } },
+            { id: 'GTM', name: '과테말라', continent: '북아메리카', flag: '🇬🇹', pop: 18000000, density: 160, capital: '과테말라시티', jobs: [{ title: '고급 안데스 커피 농가', desc: '세계적인 화산토 커피' }, { title: '마야 문학 관광 가이드', desc: '고대 마야 유적지' }], quiz: { q: '과테말라에 번성했던 대표적인 고대 문명은?', opts: ['잉카 문명', '마야 문명', '메소포타미아 문명', '이집트 문명'], a: 1 } },
+
+            // 남아메리카 (3개국)
+            { id: 'BRA', name: '브라질', continent: '남아메리카', flag: '🇧🇷', pop: 216000000, density: 25, capital: '브라질리아', jobs: [{ title: '대규모 삼림 보호원', desc: '세계의 허파 아마존 보호' }, { title: '커피 및 대두 농가', desc: '세계 최대 커피 생산국' }], quiz: { q: '브라질의 인구가 가장 밀집되어 발달한 지형적 영역은?', opts: ['아마존 밀림 깊은 속', '동남부 해안 대도시 지대(상파울루, 리우)', '안데스 산맥 꼭대기', '남극 근처'], a: 1 } },
+            { id: 'COL', name: '콜롬비아', continent: '남아메리카', flag: '🇨🇴', pop: 52000000, density: 46, capital: '보고타', jobs: [{ title: '스페셜티 커피 농업인', desc: '마일드 커피의 대명사' }, { title: '생화 플로리스트 Export', desc: '세계적인 절화 수출국' }], quiz: { q: '콜롬비아의 수도 보고타가 적도 근처임에도 서늘하고 살기 좋은 이유는?', opts: ['바다속에 있어서', '북극에 인접해서', '안데스 고산 지대에 위치해서', '사막 한가운데여서'], a: 2 } },
+            { id: 'ARG', name: '아르헨티나', continent: '남아메리카', flag: '🇦🇷', pop: 46000000, density: 17, capital: '부에노스아이레스', jobs: [{ title: '팜파스 목우 가우초(목동)', desc: '세계적인 소고기 및 소사육' }, { title: '소프트웨어 엔지니어', desc: '남미 유니콘 IT 기업 보유' }], quiz: { q: '아르헨티나의 대규모 목축업과 농업이 이루어지는 비옥한 대평원의 이름은?', opts: ['사바나', '팜파스', '툰드라', '스테프'], a: 1 } },
+
+            // 오세아니아 (1개국)
+            { id: 'AUS', name: '호주', continent: '오세아니아', flag: '🇦🇺', pop: 26000000, density: 3, capital: '캔버라', jobs: [{ title: '광산 굴착 엔지니어', desc: '철광석 및 리튬 매장 1위' }, { title: '양모 및 목축업자', desc: '세계 최대 양모 수출국' }], quiz: { q: '호주의 인구가 주로 서해안 및 동남부 해안에 집중되고 중앙부가 비어있는 이유는?', opts: ['중앙부가 바다여서', '중앙부에 거대한 대사막이 위치해서', '중앙부에 얼음이 덮여있어서', '중앙부가 화산지대여서'], a: 1 } }
+        ];
+
+        // -------------------------------------------------------------
+        // 2. STATE MANAGEMENT (SESSION STORAGE FOR TAB-RESET)
+        // -------------------------------------------------------------
+        let userCollection = JSON.parse(sessionStorage.getItem('pop_sim_collection')) || [];
+        let totalSpins = parseInt(sessionStorage.getItem('pop_sim_spins')) || 0;
+        let consecutiveDuplicates = parseInt(sessionStorage.getItem('pop_sim_pity')) || 0;
+        let quizCorrectCount = parseInt(sessionStorage.getItem('pop_sim_quiz_correct')) || 0;
+        let quizClaimedRewards = parseInt(sessionStorage.getItem('pop_sim_quiz_claimed')) || 0;
+        let solvedQuizzes = JSON.parse(sessionStorage.getItem('pop_sim_solved_quizzes')) || [];
+
+        let currentSelectedCountry = null;
+        let chartInstance = null;
+        let activeFilter = 'ALL';
+
+        // 10 Continent Missions Config
+        const MISSIONS = [
+            { id: 1, title: '아시아 1단계', desc: '아시아 5개국 수집', continent: '아시아', target: 5 },
+            { id: 2, title: '아시아 마스터', desc: '아시아 12개국 수집', continent: '아시아', target: 12 },
+            { id: 3, title: '아프리카 1단계', desc: '아프리카 4개국 수집', continent: '아프리카', target: 4 },
+            { id: 4, title: '아프리카 탐험가', desc: '아프리카 9개국 수집', continent: '아프리카', target: 9 },
+            { id: 5, title: '유럽 정복자', desc: '유럽 4개국 수집', continent: '유럽', target: 4 },
+            { id: 6, title: '유럽 마스터', desc: '유럽 8개국 수집', continent: '유럽', target: 8 },
+            { id: 7, title: '북미 개척자', desc: '북아메리카 3개국 수집', continent: '북아메리카', target: 3 },
+            { id: 8, title: '아마존 탐험대', desc: '남아메리카 2개국 수집', continent: '남아메리카', target: 2 },
+            { id: 9, title: '오세아니아 발견', desc: '호주 수집 완료', continent: '오세아니아', target: 1 },
+            { id: 10, title: '세계 탐험 대장', desc: '전 세계 30개국 수집', continent: 'ALL', target: 30 }
+        ];
+        let completedMissions = JSON.parse(sessionStorage.getItem('pop_sim_missions')) || [];
+
+        // -------------------------------------------------------------
+        // 3. CORE HELPER FUNCTIONS
+        // -------------------------------------------------------------
+        function saveData() {
+            sessionStorage.setItem('pop_sim_collection', JSON.stringify(userCollection));
+            sessionStorage.setItem('pop_sim_spins', totalSpins);
+            sessionStorage.setItem('pop_sim_pity', consecutiveDuplicates);
+            sessionStorage.setItem('pop_sim_quiz_correct', quizCorrectCount);
+            sessionStorage.setItem('pop_sim_quiz_claimed', quizClaimedRewards);
+            sessionStorage.setItem('pop_sim_solved_quizzes', JSON.stringify(solvedQuizzes));
+            sessionStorage.setItem('pop_sim_missions', JSON.stringify(completedMissions));
+        }
+
+        function formatKoreanPopulation(pop) {
+            if (pop >= 100000000) {
+                const uk = (pop / 100000000).toFixed(1);
+                return `약 ${uk}억 명`;
+            } else {
+                const man = Math.round(pop / 10000);
+                return `약 ${man.toLocaleString()}만 명`;
+            }
+        }
+
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // -------------------------------------------------------------
+        // 4. REINCARNATION (ROULETTE) LOGIC
+        // -------------------------------------------------------------
+        function pickRandomCountry() {
+            // Guarantee Pity Check (5 consecutive duplicates -> 100% uncollected)
+            const uncollected = countriesData.filter(c => !userCollection.includes(c.id));
+            
+            if (consecutiveDuplicates >= 5 && uncollected.length > 0) {
+                consecutiveDuplicates = 0;
+                const rarePick = uncollected[Math.floor(Math.random() * uncollected.length)];
+                return { country: rarePick, isPity: true };
+            }
+
+            // Weighted random selection by Population
+            const rand = Math.random() * TOTAL_WORLD_POP;
+            let cumulative = 0;
+
+            for (let c of countriesData) {
+                cumulative += c.pop;
+                if (rand <= cumulative) {
+                    return { country: c, isPity: false };
+                }
+            }
+            return { country: countriesData[0], isPity: false };
+        }
+
+        function triggerReincarnation() {
+            const spinBtn = document.getElementById('spin-btn');
+            const cardInner = document.getElementById('card-inner');
+            
+            // Disable spin if 50 completed or already spinning
+            if (userCollection.length >= 50 || spinBtn.disabled) return;
+
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Pick Country
+            const { country, isPity } = pickRandomCountry();
+            currentSelectedCountry = country;
+
+            // Flip Card Front
+            cardInner.classList.remove('rotate-y-180');
+
+            // Update Stats Counters
+            totalSpins++;
+            const isNew = !userCollection.includes(country.id);
+            if (isNew) {
+                userCollection.push(country.id);
+                consecutiveDuplicates = 0;
+            } else {
+                if (!isPity) consecutiveDuplicates++;
+            }
+
+            saveData();
+            updateStatsCounters();
+
+            // Card Flip Delay Effect
+            setTimeout(() => {
+                updateCardUI(country, isPity);
+                cardInner.classList.add('rotate-y-180');
+
+                // Confetti if new country collected
+                if (isNew) {
+                    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+                }
+
+                // Check 50 completion
+                if (userCollection.length === 50) {
+                    triggerVictory();
+                } else {
+                    spinBtn.disabled = false;
+                    spinBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }, 400);
+        }
+
+        function updateCardUI(country, isPity) {
+            const share = ((country.pop / TOTAL_WORLD_POP) * 100).toFixed(2);
+            document.getElementById('card-continent').innerText = country.continent;
+            document.getElementById('card-flag').innerText = country.flag;
+            document.getElementById('card-bg-flag').innerText = country.flag;
+            document.getElementById('card-name').innerText = country.name;
+            
+            // Pop / Share / Density Cards update
+            document.getElementById('card-pop-info').innerText = formatKoreanPopulation(country.pop);
+            document.getElementById('card-share-info').innerText = `${share}%`;
+            document.getElementById('card-density-info').innerText = `${country.density}명/km²`;
+
+            // Pick Random Job from country jobs list
+            if (country.jobs && country.jobs.length > 0) {
+                const randomJob = country.jobs[Math.floor(Math.random() * country.jobs.length)];
+                document.getElementById('card-job-title').innerText = randomJob.title;
+                document.getElementById('card-job-desc').innerText = randomJob.desc;
+            }
+
+            const pityTag = document.getElementById('card-pity-tag');
+            if (isPity) {
+                pityTag.classList.remove('hidden');
+            } else {
+                pityTag.classList.add('hidden');
+            }
+        }
+
+        // -------------------------------------------------------------
+        // QUIZ REWARD UNLOCK FUNCTION
+        // -------------------------------------------------------------
+        function claimQuizRewardCountry() {
+            const availableRewards = Math.floor(quizCorrectCount / 10) - quizClaimedRewards;
+            const uncollected = countriesData.filter(c => !userCollection.includes(c.id));
+
+            if (availableRewards <= 0 || uncollected.length === 0) {
+                alert('보상으로 뽑을 수 있는 미수집 국가가 없습니다!');
+                return;
+            }
+
+            // Pick a random uncollected rare country
+            const rewardCountry = uncollected[Math.floor(Math.random() * uncollected.length)];
+            userCollection.push(rewardCountry.id);
+            quizClaimedRewards++;
+
+            saveData();
+            updateStatsCounters();
+            renderCollectionGrid();
+            renderMissionCards();
+
+            // Fire Confetti upon successful reward draw, but not during modal open
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+            openModalForCountry(rewardCountry.id);
+
+            // Check if 50 completed
+            if (userCollection.length === 50) {
+                triggerVictory();
+            }
+        }
+
+        function updateStatsCounters() {
+            document.getElementById('stat-total-spins').innerText = `${totalSpins}회`;
+            document.getElementById('stat-collected-count').innerText = `${userCollection.length} / 50개국`;
+            document.getElementById('collected-badge').innerText = `${userCollection.length}/50`;
+
+            // Pity counter update
+            const pityRemaining = Math.max(0, 5 - consecutiveDuplicates);
+            document.getElementById('stat-pity-counter').innerText = `${pityRemaining}회 남음`;
+
+            // Quiz counter & rewards update
+            const availableRewards = Math.max(0, Math.floor(quizCorrectCount / 10) - quizClaimedRewards);
+            document.getElementById('stat-quiz-count').innerText = `${quizCorrectCount}개 (${availableRewards}회 가능)`;
+
+            const banner = document.getElementById('quiz-reward-banner');
+            const uncollected = countriesData.filter(c => !userCollection.includes(c.id));
+            if (availableRewards > 0 && uncollected.length > 0) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            // Check if any mission is ready to claim and update notification badges
+            const hasClaimableMission = MISSIONS.some(m => {
+                if (completedMissions.includes(m.id)) return false;
+                const count = (m.continent === 'ALL')
+                    ? userCollection.length
+                    : countriesData.filter(c => c.continent === m.continent && userCollection.includes(c.id)).length;
+                return count >= m.target;
+            });
+
+            const reincarnateBadge = document.getElementById('reincarnate-mission-badge');
+            const collectionBadge = document.getElementById('collection-mission-badge');
+
+            if (reincarnateBadge && collectionBadge) {
+                if (hasClaimableMission && uncollected.length > 0) {
+                    reincarnateBadge.classList.remove('hidden');
+                    collectionBadge.classList.remove('hidden');
+                } else {
+                    reincarnateBadge.classList.add('hidden');
+                    collectionBadge.classList.add('hidden');
+                }
+            }
+
+            // Keep completion button active for repeating victory fanfare
+            const spinBtn = document.getElementById('spin-btn');
+            if (userCollection.length >= 50) {
+                spinBtn.disabled = false;
+                spinBtn.onclick = triggerVictory;
+                spinBtn.className = 'w-72 md:w-80 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-600 hover:to-yellow-500 text-slate-900 font-jua text-xl py-4 rounded-2xl shadow-xl transform active:scale-95 transition duration-200 border-b-4 border-amber-700 flex items-center justify-center gap-2 cursor-pointer animate-pulse';
+                spinBtn.innerHTML = '<span>🏆 50개국 완판 완료! (축하 세레모니 보기)</span>';
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 5. NAVIGATION TAB SWITCHING
+        // -------------------------------------------------------------
+        function switchTab(tabName) {
+            ['reincarnate', 'collection', 'stats'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (navBtn) {
+                    navBtn.classList.remove('bg-white', 'text-blue-700', 'shadow');
+                    navBtn.classList.add('hover:bg-blue-500/50', 'text-white');
+                }
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('hover:bg-blue-500/50', 'text-white');
+                activeBtn.classList.add('bg-white', 'text-blue-700', 'shadow');
+            }
+
+            if (tabName === 'collection') {
+                renderCollectionGrid();
+                renderMissionCards();
+            } else if (tabName === 'stats') {
+                renderChart();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 6. COLLECTION GRID & MISSIONS LOGIC
+        // -------------------------------------------------------------
+        function filterCollection(continent) {
+            activeFilter = continent;
+            document.querySelectorAll('.col-filter-btn').forEach(btn => {
+                if (btn.dataset.filter === continent) {
+                    btn.className = 'col-filter-btn px-2.5 py-1 rounded-lg font-bold bg-slate-800 text-white';
+                } else {
+                    btn.className = 'col-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-white';
+                }
+            });
+            renderCollectionGrid();
+        }
+
+        function renderCollectionGrid() {
+            const grid = document.getElementById('collection-grid');
+            grid.innerHTML = '';
+
+            let filtered = countriesData;
+            if (activeFilter !== 'ALL') {
+                filtered = countriesData.filter(c => c.continent === activeFilter);
+            }
+
+            filtered.forEach(country => {
+                const isCollected = userCollection.includes(country.id);
+                const card = document.createElement('div');
+                
+                if (isCollected) {
+                    card.className = 'bg-white border-2 border-emerald-400 rounded-2xl p-3 text-center shadow-sm hover:shadow-md cursor-pointer transition transform hover:-translate-y-1 relative overflow-hidden';
+                    card.onclick = () => openModalForCountry(country.id);
+                    card.innerHTML = `
+                        <div class="text-4xl mb-1">${country.flag}</div>
+                        <div class="font-jua text-sm text-slate-900">${country.name}</div>
+                        <div class="text-[10px] text-emerald-600 font-bold bg-emerald-50 rounded-full py-0.5 mt-1">수집 완료</div>
+                    `;
+                } else {
+                    card.className = 'bg-slate-100 border border-slate-200 rounded-2xl p-3 text-center opacity-60 relative overflow-hidden select-none';
+                    card.innerHTML = `
+                        <div class="text-4xl mb-1 filter grayscale">🔒</div>
+                        <div class="font-jua text-sm text-slate-500">${country.name}</div>
+                        <div class="text-[10px] text-slate-400 font-bold bg-slate-200 rounded-full py-0.5 mt-1">🔒 미수집</div>
+                    `;
+                }
+                grid.appendChild(card);
+            });
+        }
+
+        function renderMissionCards() {
+            const container = document.getElementById('mission-grid');
+            container.innerHTML = '';
+
+            MISSIONS.forEach(mission => {
+                let currentCount = 0;
+                if (mission.continent === 'ALL') {
+                    currentCount = userCollection.length;
+                } else {
+                    currentCount = countriesData.filter(c => c.continent === mission.continent && userCollection.includes(c.id)).length;
+                }
+
+                const isCompleted = completedMissions.includes(mission.id);
+                const canClaim = !isCompleted && currentCount >= mission.target;
+                const progressPercent = Math.min(100, Math.round((currentCount / mission.target) * 100));
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-2xl border text-xs flex flex-col justify-between space-y-2.5 ${
+                    isCompleted 
+                        ? 'bg-slate-50 border-slate-200 text-slate-400' 
+                        : canClaim 
+                        ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm animate-pulse' 
+                        : 'bg-white border-slate-200 text-slate-700'
+                }`;
+
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold font-jua text-sm ${isCompleted ? 'text-slate-500' : 'text-slate-900'}">${mission.title}</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                isCompleted ? 'bg-slate-200 text-slate-500' : canClaim ? 'bg-amber-200 text-amber-800' : 'bg-blue-50 text-blue-600'
+                            }">${Math.min(currentCount, mission.target)} / ${mission.target}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500">${mission.desc}</div>
+                        <!-- Progress Bar Visual Effect -->
+                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200 mt-1">
+                            <div class="h-full transition-all duration-500 ${
+                                isCompleted ? 'bg-emerald-500' : canClaim ? 'bg-amber-500' : 'bg-blue-600'
+                            }" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                    ${
+                        isCompleted 
+                        ? '<span class="text-[10px] font-bold text-slate-400 bg-slate-200 py-1 rounded-xl text-center">✅ 완료됨</span>'
+                        : canClaim
+                        ? `<button onclick="claimMissionReward(${mission.id})" class="bg-amber-500 hover:bg-amber-600 text-white font-jua text-xs py-1.5 px-3 rounded-xl transition shadow">🎁 보상 받기</button>`
+                        : '<span class="text-[10px] font-bold text-blue-500 bg-blue-50 py-1 rounded-xl text-center">⏳ 탐험 진행 중</span>'
+                    }
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function claimMissionReward(missionId) {
+            const mission = MISSIONS.find(m => m.id === missionId);
+            if (!mission || completedMissions.includes(missionId)) return;
+
+            const uncollected = countriesData.filter(c => !userCollection.includes(c.id));
+            if (uncollected.length === 0) {
+                alert('이미 모든 국가를 수집하셨습니다!');
+                return;
+            }
+
+            let pool = uncollected;
+            if (mission.continent !== 'ALL') {
+                const continentUncollected = uncollected.filter(c => c.continent === mission.continent);
+                if (continentUncollected.length > 0) pool = continentUncollected;
+            }
+
+            const rewardCountry = pool[Math.floor(Math.random() * pool.length)];
+            userCollection.push(rewardCountry.id);
+            completedMissions.push(missionId);
+
+            saveData();
+            updateStatsCounters();
+            renderCollectionGrid();
+            renderMissionCards();
+
+            confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+            openModalForCountry(rewardCountry.id);
+
+            if (userCollection.length === 50) {
+                triggerVictory();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 7. MODAL & QUIZ SYSTEM LOGIC
+        // -------------------------------------------------------------
+        function openCurrentCountryModal() {
+            if (currentSelectedCountry) {
+                openModalForCountry(currentSelectedCountry.id);
+            }
+        }
+
+        function openModalForCountry(countryId) {
+            const country = countriesData.find(c => c.id === countryId);
+            if (!country) return;
+
+            currentSelectedCountry = country;
+            const share = ((country.pop / TOTAL_WORLD_POP) * 100).toFixed(2);
+
+            document.getElementById('modal-flag').innerText = country.flag;
+            document.getElementById('modal-continent').innerText = country.continent;
+            document.getElementById('modal-name').innerText = country.name;
+            document.getElementById('modal-pop').innerText = formatKoreanPopulation(country.pop);
+            document.getElementById('modal-share').innerText = `${share}%`;
+            document.getElementById('modal-density').innerText = `${country.density}명/km²`;
+
+            // Render Jobs
+            const jobsContainer = document.getElementById('modal-jobs');
+            jobsContainer.innerHTML = '';
+            country.jobs.forEach(job => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between';
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-slate-800">${job.title}</div>
+                        <div class="text-[11px] text-slate-500">${job.desc}</div>
+                    </div>
+                `;
+                jobsContainer.appendChild(div);
+            });
+
+            // Reset Quiz Feedback Display
+            const quizFeedback = document.getElementById('quiz-feedback');
+            quizFeedback.classList.add('hidden');
+            quizFeedback.innerText = '';
+
+            const quizQ = document.getElementById('modal-quiz-q');
+            const quizOpts = document.getElementById('modal-quiz-opts');
+            quizOpts.innerHTML = '';
+
+            const isAlreadySolved = solvedQuizzes.includes(country.id);
+
+            // Always display the quiz question and options for review, disabling buttons if already solved
+            quizQ.innerText = `Q. ${country.quiz.q}`;
+
+            if (isAlreadySolved) {
+                // Show review status banner
+                quizFeedback.classList.remove('hidden');
+                quizFeedback.className = 'text-xs text-center font-bold p-2 rounded-xl bg-emerald-100 text-emerald-800';
+                quizFeedback.innerText = '✅ 이미 정답을 맞힌 퀴즈입니다 (복습 모드)';
+            }
+
+            // Render options (disabled if already solved)
+            country.quiz.opts.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                const isCorrectOption = index === country.quiz.a;
+                
+                if (isAlreadySolved) {
+                    if (isCorrectOption) {
+                        btn.className = 'bg-emerald-500 text-white border border-emerald-600 text-xs font-bold py-2 px-3 rounded-xl text-left shadow-sm cursor-default';
+                        btn.innerText = `✔ (정답) ${opt}`;
+                    } else {
+                        btn.className = 'bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium py-2 px-3 rounded-xl text-left shadow-sm cursor-default opacity-70';
+                        btn.innerText = opt;
+                    }
+                    btn.disabled = true;
+                } else {
+                    btn.className = 'quiz-opt-btn bg-white hover:bg-indigo-100 border border-indigo-200 text-slate-800 text-xs font-medium py-2 px-3 rounded-xl transition text-left shadow-sm';
+                    btn.innerText = opt;
+                    btn.onclick = () => handleQuizSubmit(isCorrectOption, country.id);
+                }
+                quizOpts.appendChild(btn);
+            });
+
+            // Open modal UI without any confetti triggers
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        function handleQuizSubmit(isCorrect, countryId) {
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-800', 'bg-rose-100', 'text-rose-800');
+
+            if (isCorrect) {
+                feedback.classList.add('bg-emerald-100', 'text-emerald-800');
+                feedback.innerText = '🎉 정답입니다! (+1 누적 정답 달성)';
+                
+                if (!solvedQuizzes.includes(countryId)) {
+                    solvedQuizzes.push(countryId);
+                    quizCorrectCount++;
+                    saveData();
+                    updateStatsCounters();
+                    // Fire confetti ONLY when a correct answer is actually submitted
+                    confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+                }
+            } else {
+                feedback.classList.add('bg-rose-100', 'text-rose-800');
+                feedback.innerText = '❌ 아쉽습니다! 다시 스스로 탐구해보고 도전하세요.';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        // Grand fireworks victory ceremony
+        function triggerVictory() {
+            document.getElementById('victory-modal').classList.remove('hidden');
+
+            const duration = 3.5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                
+                // Left & Right firework cannons
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        function closeVictoryModal() {
+            document.getElementById('victory-modal').classList.add('hidden');
+        }
+
+        // -------------------------------------------------------------
+        // 8. CHART.JS CONTINENT DISTRIBUTION
+        // -------------------------------------------------------------
+        function renderChart() {
+            const ctx = document.getElementById('continentChart').getContext('2d');
+            
+            const continentPops = {
+                '아시아': 0,
+                '아프리카': 0,
+                '유럽': 0,
+                '북아메리카': 0,
+                '남아메리카': 0,
+                '오세아니아': 0
+            };
+
+            countriesData.forEach(c => {
+                if (continentPops[c.continent] !== undefined) {
+                    continentPops[c.continent] += c.pop;
+                }
+            });
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(continentPops),
+                    datasets: [{
+                        data: Object.values(continentPops),
+                        backgroundColor: [
+                            '#3b82f6', // 아시아 - Blue
+                            '#f59e0b', // 아프리카 - Amber
+                            '#10b981', // 유럽 - Emerald
+                            '#ec4899', // 북미 - Pink
+                            '#8b5cf6', // 남미 - Purple
+                            '#06b6d4'  // 오세아니아 - Cyan
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // -------------------------------------------------------------
+        // 9. INITIALIZATION ON WINDOW LOAD
+        // -------------------------------------------------------------
+        window.onload = function() {
+            updateStatsCounters();
+            
+            // Pick default initial country for display preview
+            if (countriesData.length > 0) {
+                currentSelectedCountry = countriesData.find(c => c.id === 'KOR') || countriesData[0];
+                updateCardUI(currentSelectedCountry, false);
+            }
+        };
+    </script>
+</body>
+</html>
